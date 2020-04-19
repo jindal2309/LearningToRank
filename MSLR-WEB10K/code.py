@@ -1,4 +1,10 @@
+
+# Sample Code
+import os
 import numpy as np
+import pandas as pd
+from collections import Counter
+from sklearn.datasets import load_svmlight_file
 from LambdaRankNN import LambdaRankNN
 
 # generate query data
@@ -17,17 +23,11 @@ y_pred = ranker.predict(X)
 ranker.evaluate(X, y, qid, eval_at=2)
 
 
-import os
-import numpy as np
-import pandas as pd
-from collections import Counter
-from sklearn.datasets import load_svmlight_file
-
+# utils
 def sparsity(X):
     number_of_nan = np.count_nonzero(np.isnan(X))
     number_of_zeros = np.count_nonzero(np.abs(X) < 1e-6)
     return (number_of_nan + number_of_zeros) / float(X.shape[0] * X.shape[1]) * 100.
-
 
 def process_libsvm_file(file_name):
     X, y, queries = load_svmlight_file(file_name, query_id=True)
@@ -41,15 +41,11 @@ def print_dataset_statistics(X, y, queries, name):
     print("y distribution")
     print(Counter(y))
     print("num samples in queries: minimum, median, maximum")
-    # num_queries = Counter(queries).values()
-    #print(np.min(num_queries), np.median(num_queries), np.max(num_queries))
     print('----------------------------------')
-
 
 def dump_to_file(out_file_name, X, y, queries):
     all = np.hstack((y.reshape(-1, 1), queries.reshape(-1, 1), X))
     pd.DataFrame(all).sort_values(by=[1]).to_csv(out_file_name, sep='\t', header=False, index=False)
-
 
 def mslr_web(src_path, dst_path):
     train_file = os.path.join(src_path, "train.txt")
@@ -77,6 +73,8 @@ src_path = './Fold1'
 dst_path = './Fold1'
 mslr_web(src_path, dst_path)
 
+
+# Read dataset
 def read_dataset(file_name):
     df = pd.read_csv(file_name, sep='\t', header=None)
     y = df[0].values
@@ -94,7 +92,7 @@ test_y = test_y.astype(int)
 train_X, train_y, train_queries = train_X[:1000,:], train_y[:1000], train_queries[:1000]
 test_X, test_y, test_queries =  test_X[:1000,:], test_y[:1000], test_queries[:1000]
 
-# train model
+# Train model
 ranker = LambdaRankNN(input_size=train_X.shape[1], hidden_layer_sizes=(16,8,), activation=('relu', 'relu',), solver='adam')
 ranker.fit(train_X, train_y, train_queries, epochs=5)
 train_y_pred = ranker.predict(train_X)
