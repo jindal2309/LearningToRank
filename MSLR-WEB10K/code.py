@@ -6,6 +6,7 @@ import pandas as pd
 from collections import Counter
 from sklearn.datasets import load_svmlight_file
 from LambdaRankNN import LambdaRankNN
+from LambdaRankNN import RankNetNN
 
 # generate query data
 X = np.array([[0.2, 0.3, 0.4],
@@ -89,11 +90,19 @@ print(train_X.shape, train_y.shape)
 train_y = train_y.astype(int)
 test_y = test_y.astype(int)
 
-train_X, train_y, train_queries = train_X[:1000,:], train_y[:1000], train_queries[:1000]
-test_X, test_y, test_queries =  test_X[:1000,:], test_y[:1000], test_queries[:1000]
+train_X, train_y, train_queries = train_X[:10,:], train_y[:10], train_queries[:10]
+test_X, test_y, test_queries =  test_X[:10,:], test_y[:10], test_queries[:10]
 
-# Train model
+# Train LambdaRankNN model
 ranker = LambdaRankNN(input_size=train_X.shape[1], hidden_layer_sizes=(16,8,), activation=('relu', 'relu',), solver='adam')
 ranker.fit(train_X, train_y, train_queries, epochs=5)
 train_y_pred = ranker.predict(train_X)
 ranker.evaluate(test_X, test_y, test_queries, eval_at=2)
+
+
+# Train RankNetNN model
+ranker = RankNetNN(input_size=train_X.shape[1], hidden_layer_sizes=(16,8,), activation=('relu', 'relu',), solver='adam')
+ranker.fit(train_X, train_y, train_queries, epochs=5)
+train_y_pred = ranker.predict(train_X)
+ranker.evaluate(test_X, test_y, test_queries, eval_at=2)
+
