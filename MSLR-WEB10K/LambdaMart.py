@@ -1,34 +1,39 @@
-'multi:softprob'
 
-import lightgbm as lgb
-import pandas as pd
-gbm = lgb.LGBMRanker()
+import pyltr
 
-dst_path = './Fold1'
-# Read dataset
-def read_dataset(file_name):
-    df = pd.read_csv(file_name, sep='\t', header=None)
-    y = df[0].values
-    queries = df[1].values
-    X = df.iloc[:, 2:].values
-    return X, y, queries
+with open(dst_path + '/train.txt') as trainfile, \
+        open(dst_path + '/vali.txt') as valifile, \
+        open(dst_path + '/test.txt') as evalfile:
+    TX, Ty, Tqids, _ = pyltr.data.letor.read_dataset(trainfile)
+    VX, Vy, Vqids, _ = pyltr.data.letor.read_dataset(valifile)
+    EX, Ey, Eqids, _ = pyltr.data.letor.read_dataset(evalfile)
+    
+metric = pyltr.metrics.NDCG(k=2)
 
-train_X, train_y, train_queries = read_dataset(dst_path + "/vali.tsv")
-test_X, test_y, test_queries = read_dataset(dst_path + "/test.tsv")
-print(train_X.shape, train_y.shape)
+VX1, Vy1, Vqids1 = VX, Vy, Vqids
+EX1, Ey1, Eqids1 = EX, Ey, Eqids
 
-train_y = train_y.astype(int)
-test_y = test_y.astype(int)
+TX, Ty, Tqids = VX[:1000], Vy[:1000], Vqids[:1000]
+VX, Vy, Vqids = EX[:1000], Ey[:1000], Eqids[:1000]
 
-train_X, train_y, train_queries = train_X[:10,:], train_y[:10], train_queries[:10]
-test_X, test_y, test_queries =  test_X[:10,:], test_y[:10], test_queries[:10]
+# Only needed if you want to perform validation (early stopping & trimming)
+monitor = pyltr.models.monitors.ValidationMonitor(
+    VX, Vy, Vqids, metric=metric, stop_after=250)
 
-query_train = [train_X.shape[0]]
-#query_val = [X_val.shape[0]]
-query_test = [test_X.shape[0]]
+model = pyltr.models.LambdaMART(
+    metric=metric,
+    n_estimators=100,
+    learning_rate=0.02,
+    max_features=0.5,
+    query_subsample=0.5,
+    max_leaf_nodes=10,
+    min_samples_leaf=64,
+    verbose=1,
+)
 
-gbm.fit(train_X, train_y, group=query_train,
-        eval_set=[(test_X, test_y)], eval_group=[query_test],
-        eval_at=[5, 10, 20], early_stopping_rounds=50)
+model.fit(TX, Ty, Tqids, monitor=monitor)
 
-test_pred = gbm.predict(test_X)
+Epred = model.predict(EX)
+print('Random ranking:', metric.calc_mean_random(Eqids, Ey))
+print('Our model:', metric.calc_mean(Eqids, Ey, Epred))
+
