@@ -1,28 +1,9 @@
-
 # Sample Code
 import os
 import numpy as np
 import pandas as pd
 from collections import Counter
 from sklearn.datasets import load_svmlight_file
-from LambdaRankNN import LambdaRankNN
-from LambdaRankNN import RankNetNN
-
-# generate query data
-X = np.array([[0.2, 0.3, 0.4],
-              [0.1, 0.7, 0.4],
-              [0.3, 0.4, 0.1],
-              [0.8, 0.4, 0.3],
-              [0.9, 0.35, 0.25]])
-y = np.array([0, 1, 0, 0, 2])
-qid = np.array([1, 1, 1, 2, 2])
-
-# train model
-ranker = LambdaRankNN(input_size=X.shape[1], hidden_layer_sizes=(16,8,), activation=('relu', 'relu',), solver='adam')
-ranker.fit(X, y, qid, epochs=5)
-y_pred = ranker.predict(X)
-ranker.evaluate(X, y, qid, eval_at=2)
-
 
 # utils
 def sparsity(X):
@@ -73,36 +54,3 @@ def mslr_web(src_path, dst_path):
 src_path = './Fold1'
 dst_path = './Fold1'
 mslr_web(src_path, dst_path)
-
-
-# Read dataset
-def read_dataset(file_name):
-    df = pd.read_csv(file_name, sep='\t', header=None)
-    y = df[0].values
-    queries = df[1].values
-    X = df.iloc[:, 2:].values
-    return X, y, queries
-
-train_X, train_y, train_queries = read_dataset(dst_path + "/vali.tsv")
-test_X, test_y, test_queries = read_dataset(dst_path + "/test.tsv")
-print(train_X.shape, train_y.shape)
-
-train_y = train_y.astype(int)
-test_y = test_y.astype(int)
-
-train_X, train_y, train_queries = train_X[:10,:], train_y[:10], train_queries[:10]
-test_X, test_y, test_queries =  test_X[:10,:], test_y[:10], test_queries[:10]
-
-# Train LambdaRankNN model
-ranker = LambdaRankNN(input_size=train_X.shape[1], hidden_layer_sizes=(16,8,), activation=('relu', 'relu',), solver='adam')
-ranker.fit(train_X, train_y, train_queries, epochs=5)
-train_y_pred = ranker.predict(train_X)
-ranker.evaluate(test_X, test_y, test_queries, eval_at=2)
-
-
-# Train RankNetNN model
-ranker = RankNetNN(input_size=train_X.shape[1], hidden_layer_sizes=(16,8,), activation=('relu', 'relu',), solver='adam')
-ranker.fit(train_X, train_y, train_queries, epochs=5)
-train_y_pred = ranker.predict(train_X)
-ranker.evaluate(test_X, test_y, test_queries, eval_at=2)
-
