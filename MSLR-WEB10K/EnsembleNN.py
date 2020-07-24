@@ -1,24 +1,48 @@
 
 import torch
 import torch.nn as nn
+import pandas as pd
+import pyltr
 import torch.nn.functional as F
-from torch.utils.data.dataloader import DataLoader
 from torch.optim.lr_scheduler import ReduceLROnPlateau, CyclicLR
 
 seed = 142
 torch.manual_seed(seed)
 
-y1 = torch.ones(1000,1)
-y2 = torch.ones(1000,1)*4
-y3 = torch.ones(1000,1)*2
+def read_data(filename):
+    y1 = pd.read_csv(filename)['Test_pred']
+    y1 = y1.dropna()
+    y1 = torch.tensor(y1).unsqueeze(1)
+    return y1
+    
+y1 = read_data("lambda_mart_max_features_0.8.csv")
+y2 = read_data("lambda_mart_max_leaf_nodes_20.csv")
+y3 = read_data("lambda_mart_min_samples_leaf_32.csv")
+y4 = read_data("lambda_mart_learning_rate_2e-3.csv")
+y5 = read_data("lambda_mart_n_estimators_200.csv")
+y6 = read_data("lambda_mart.csv")
 
-#1000 x 3  
-input_val = torch.cat([y1, y2, y3], dim = 1)
-targets = torch.ones(1000)*15
+print(y1.shape, y2.shape, y3.shape)
+input_val = torch.cat([y1, y2, y3, y4, y5, y6], dim = 1)
 
-num_epochs = 20
-batch_size = 10
-learning_rate = 1e-3
+dst_path = './Fold1'
+print("Data Loading")
+with open(dst_path + '/train.txt') as trainfile, \
+        open(dst_path + '/vali.txt') as valifile, \
+        open(dst_path + '/test.txt') as evalfile:
+    #_, Ty, _, _ = pyltr.data.letor.read_dataset(trainfile)
+    #_, Vy, _, _ = pyltr.data.letor.read_dataset(valifile)
+    _, Ey, _, _ = pyltr.data.letor.read_dataset(evalfile)
+
+#Ty = Ty[:100000]
+#Vy = Vy[:30000]
+Ey = Ey[:30000]
+print("Data Loading Complete")
+targets = torch.tensor(Ey).unsqueeze(1)
+
+num_epochs = 50
+batch_size = 50
+learning_rate = 1e-2
 cuda = True
 
 class SimpleNN1(nn.Module):
@@ -63,12 +87,12 @@ else:
 print("-" * 84)
 print("Running on device type: {}".format(device))
 
-model = SimpleNN1(3,1)
+model = SimpleNN1(6,5)
 #model = SimpleNN2(3,1,16)
 model.to(device)
 
 optimizer = torch.optim.Adam(lr=learning_rate, params=model.parameters())
-scheduler = ReduceLROnPlateau(optimizer, "min", patience=10, verbose=True,)
+scheduler = ReduceLROnPlateau(optimizer, "min", patience=100, verbose=True,)
 
 criterion = nn.MSELoss()
 training_loss_list = []
@@ -80,12 +104,13 @@ for epoch in range(num_epochs):
         start = i
         end = start + batch_size
         #print(start,end)
-        inputs = input_val[start:end,:]
-        target = targets[start:end]
+        inputs = input_val[start:end,:].float()
+        target = targets[start:end].float()
         inputs = inputs.to(device)
+        target = target.to(device)
         out = model(inputs)
-        loss = torch.sqrt(criterion(out, target))
-        #loss = F.nll_loss(out, target)
+        #loss = torch.sqrt(criterion(out, target))
+        loss = F.nll_loss(out, target)
         training_loss += loss.item()
         loss.backward()
         nn.utils.clip_grad_norm_(model.parameters(), 1)
@@ -94,5 +119,7 @@ for epoch in range(num_epochs):
     print("epoch", epoch, "training_loss_per_epoch", training_loss)
     training_loss_list.append(training_loss)
 
-print(out[0:5])
+print("Input",inputs[:10])
+print("Prediction",out[:10])
+print("Target", target[:10])
 #print(list(model.parameters())[0].data.numpy())
