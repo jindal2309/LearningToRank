@@ -1,5 +1,8 @@
 # LearningToRank
-SmartRANK: An Ensemble Approach for Learning to Rank
+
+## SmartRANK: An Ensemble Approach for Learning to Rank
+#### Authors: Mohit Sudhakar, Gaurav Jindal and Rishab Bamrara
+Dept. of Computer Science, University of Virginia
 
 Link to report: http://cs.virginia.edu/~ms5sw/SmartRank.pdf
 
